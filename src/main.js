@@ -4,10 +4,8 @@ import { google } from 'googleapis';
 
 await Actor.init();
 
-// Your main Google Drive folder ID
 const MAIN_FOLDER_ID = '1UJgpC725VPTDvoTThU8m_8GnPIAgVKN9';
 
-// Get input from the actor
 const input = await Actor.getInput();
 console.log('Input received:', input);
 
@@ -26,133 +24,94 @@ const auth = new google.auth.GoogleAuth({
 const drive = google.drive({ version: 'v3', auth });
 const sheets = google.sheets({ version: 'v4', auth });
 
-// Function to create a folder in Google Drive
+// Create folder
 async function createFolder(name, parentId) {
     console.log(`Creating folder: ${name}`);
-    
-    const fileMetadata = {
-        name: name,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: [parentId]
-    };
-
     const response = await drive.files.create({
-        resource: fileMetadata,
-        fields: 'id, name',
+        requestBody: {
+            name: name,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentId]
+        },
+        fields: 'id',
         supportsAllDrives: true
     });
-
-    console.log(`Folder created: ${name} with ID: ${response.data.id}`);
+    console.log(`Folder created with ID: ${response.data.id}`);
     return response.data.id;
 }
 
-// Function to create Google Sheet using Sheets API
+// Create Google Sheet directly in folder via Drive API
 async function createGoogleSheet(name, parentId) {
     console.log(`Creating Google Sheet: ${name}`);
-
-    // Step 1: Create spreadsheet using Sheets API
-    const spreadsheet = await sheets.spreadsheets.create({
-        resource: {
-            properties: {
-                title: name
-            }
+    const response = await drive.files.create({
+        requestBody: {
+            name: name,
+            mimeType: 'application/vnd.google-apps.spreadsheet',
+            parents: [parentId]
         },
-        fields: 'spreadsheetId'
-    });
-
-    const sheetId = spreadsheet.data.spreadsheetId;
-    console.log(`Spreadsheet created with ID: ${sheetId}`);
-
-    // Step 2: Move the spreadsheet to the correct folder
-    const file = await drive.files.get({
-        fileId: sheetId,
-        fields: 'parents',
+        fields: 'id',
         supportsAllDrives: true
     });
-
-    const previousParents = file.data.parents.join(',');
-
-    await drive.files.update({
-        fileId: sheetId,
-        addParents: parentId,
-        removeParents: previousParents,
-        supportsAllDrives: true,
-        fields: 'id, parents'
-    });
-
-    console.log(`Google Sheet moved to correct folder`);
-    return sheetId;
+    console.log(`Google Sheet created with ID: ${response.data.id}`);
+    return response.data.id;
 }
 
-// Function to save LinkedIn URLs to Google Sheet
+// Save URLs to sheet
 async function saveUrlsToSheet(sheetId, urls) {
-    console.log(`Saving ${urls.length} URLs to Google Sheet...`);
-    
+    console.log(`Saving ${urls.length} URLs to sheet...`);
     const values = [
         ['LinkedIn URL', 'Status', 'Date Added'],
         ...urls.map(url => [url, 'Pending', new Date().toISOString()])
     ];
-
     await sheets.spreadsheets.values.update({
         spreadsheetId: sheetId,
         range: 'Sheet1!A1',
         valueInputOption: 'RAW',
-        resource: { values }
+        requestBody: { values }
     });
-
-    console.log('URLs saved to Google Sheet successfully!');
+    console.log('URLs saved successfully!');
 }
 
-// Get LinkedIn URLs based on input mode
+// Get LinkedIn URLs
 let allLinkedinUrls = [];
 
 if (inputMode === 'manual') {
     console.log('Processing manual LinkedIn URLs...');
     allLinkedinUrls = linkedinUrls;
-    console.log(`Found ${allLinkedinUrls.length} URLs from manual input`);
-
+    console.log(`Found ${allLinkedinUrls.length} URLs`);
 } else if (inputMode === 'bulk') {
-    console.log('Processing bulk CSV file...');
-    
-    if (!csvFileUrl) {
-        throw new Error('CSV File URL is required for bulk mode!');
-    }
-
+    console.log('Processing bulk CSV...');
+    if (!csvFileUrl) throw new Error('CSV File URL is required!');
     try {
         const response = await axios.get(csvFileUrl);
-        const csvContent = response.data;
-        
-        const lines = csvContent.split('\n');
+        const lines = response.data.split('\n');
         for (const line of lines) {
             const url = line.trim();
             if (url && url.includes('linkedin.com')) {
                 allLinkedinUrls.push(url);
             }
         }
-        console.log(`Found ${allLinkedinUrls.length} URLs from CSV file`);
+        console.log(`Found ${allLinkedinUrls.length} URLs from CSV`);
     } catch (error) {
-        throw new Error(`Failed to download CSV file: ${error.message}`);
+        throw new Error(`Failed to download CSV: ${error.message}`);
     }
 }
 
-console.log('Total LinkedIn URLs:', allLinkedinUrls.length);
+console.log('Total URLs:', allLinkedinUrls.length);
+console.log('Setting up Google Drive structure...');
 
-// Create Google Drive folder structure
-console.log('Setting up Google Drive folder structure...');
-
-// Create customer folder inside main folder
+// Create customer folder
 const customerFolderId = await createFolder(customerName, MAIN_FOLDER_ID);
 
-// Create Google Sheet inside customer folder
+// Create sheet in customer folder
 const sheetId = await createGoogleSheet(`${customerName} - LinkedIn URLs`, customerFolderId);
 
-// Save URLs to Google Sheet
+// Save URLs
 await saveUrlsToSheet(sheetId, allLinkedinUrls);
 
 const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}`;
-console.log(`✅ Google Sheet created: ${sheetUrl}`);
+console.log(`✅ Sheet URL: ${sheetUrl}`);
 
-// Save results to actor output
 await Actor.setValue('OUTPUT', {
     customerName,
     inputMode,
@@ -162,6 +121,5 @@ await Actor.setValue('OUTPUT', {
     customerFolderId
 });
 
-console.log('✅ All done successfully!');
-
+console.log('✅ All done!');
 await Actor.exit();
