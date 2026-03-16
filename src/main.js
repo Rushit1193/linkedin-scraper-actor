@@ -39,7 +39,7 @@ if (inputMode === 'manual') {
 
 console.log('Total URLs:', allLinkedinUrls.length);
 
-// Step 1: Save to Google Drive via Apps Script
+// Step 1: Save to Google Drive
 console.log('Saving to Google Drive...');
 const driveResponse = await axios.post(APPS_SCRIPT_URL, {
     customerName,
@@ -56,75 +56,98 @@ if (!driveResponse.data.success) {
 const sheetUrl = driveResponse.data.sheetUrl;
 console.log(`✅ Google Sheet created: ${sheetUrl}`);
 
-// Step 2: Send all URLs to Webhook Input at once
+// Step 2: Send to Webhook Input
 console.log('Sending URLs to Webhook Input...');
 
 const webhookPayload = {
-    service_name: serviceName || 'dev_fusion/linkedin-profile-scraper',
-    service_request_tag_name: serviceRequestTagName || 'linkedin-profile-scraper',
+    service_name: serviceName || 'LinkedIn Scraper',
+    service_request_tag_name: serviceRequestTagName || customerName,
     service_request_url: allLinkedinUrls[0],
     source: 'Dev name : Assignment'
 };
 
-console.log('Sending webhook payload:', JSON.stringify(webhookPayload));
-
 console.log('Webhook payload:', JSON.stringify(webhookPayload));
 
-const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, webhookPayload, {
-    headers: { 'Content-Type': 'application/json' },
-    timeout: 30000
-});
+let requestId = null;
 
-console.log('Webhook response:', webhookResponse.data);
-
-const requestId = webhookResponse.data.request_id || 
-                  webhookResponse.data.requestId || 
-                  webhookResponse.data.id;
-
-console.log(`✅ Request ID received: ${requestId}`);
-
-// Step 3: Poll Status Webhook every 3 minutes
-console.log('Polling status webhook...');
-
-let status = 'processing';
-let attempts = 0;
-let resultData = null;
-
-while (status !== 'completed' && attempts < 10) {
-    attempts++;
-    console.log(`Attempt ${attempts} - Checking status for request ID: ${requestId}`);
-
-    const statusResponse = await axios.post(WEBHOOK_STATUS_URL, {
-        request_id: requestId
-    }, {
+try {
+    const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, webhookPayload, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        timeout: 60000 // 60 seconds
     });
 
-    console.log('Status response:', statusResponse.data);
-    status = statusResponse.data.status;
+    console.log('Webhook response:', webhookResponse.data);
+    requestId = webhookResponse.data.request_id ||
+                webhookResponse.data.requestId ||
+                webhookResponse.data.id;
 
-    if (status === 'completed') {
-        console.log(`✅ Request completed!`);
-        resultData = statusResponse.data;
-        break;
-    }
+    console.log(`✅ Request ID received: ${requestId}`);
 
-    console.log(`Status is "${status}", waiting 3 minutes...`);
-    await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000));
+} catch (error) {
+    console.log(`⚠️ Webhook error: ${error.message}`);
+    console.log('Saving partial output...');
+
+    await Actor.setValue('OUTPUT', {
+        customerName,
+        inputMode,
+        totalUrls: allLinkedinUrls.length,
+        linkedinUrls: allLinkedinUrls,
+        googleSheetUrl: sheetUrl,
+        webhookError: error.message,
+        status: 'webhook_failed'
+    });
+
+    await Actor.exit();
+    process.exit(0);
 }
 
-// Save final output
-await Actor.setValue('OUTPUT', {
-    customerName,
-    inputMode,
-    totalUrls: allLinkedinUrls.length,
-    linkedinUrls: allLinkedinUrls,
-    googleSheetUrl: sheetUrl,
-    requestId,
-    status,
-    result: resultData
-});
+// Step 3: Poll Status Webhook
+if (requestId) {
+    console.log('Polling status webhook...');
+
+    let status = 'processing';
+    let attempts = 0;
+    let resultData = null;
+
+    while (status !== 'completed' && attempts < 10) {
+        attempts++;
+        console.log(`Attempt ${attempts} - Checking status for: ${requestId}`);
+
+        try {
+            const statusResponse = await axios.post(WEBHOOK_STATUS_URL, {
+                request_id: requestId
+            }, {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 60000
+            });
+
+            console.log('Status response:', statusResponse.data);
+            status = statusResponse.data.status;
+
+            if (status === 'completed') {
+                console.log(`✅ Completed!`);
+                resultData = statusResponse.data;
+                break;
+            }
+        } catch (error) {
+            console.log(`Status check error: ${error.message}`);
+        }
+
+        console.log(`Status: "${status}", waiting 3 minutes...`);
+        await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000));
+    }
+
+    await Actor.setValue('OUTPUT', {
+        customerName,
+        inputMode,
+        totalUrls: allLinkedinUrls.length,
+        linkedinUrls: allLinkedinUrls,
+        googleSheetUrl: sheetUrl,
+        requestId,
+        status,
+        result: resultData
+    });
+}
 
 console.log('✅ All done!');
 await Actor.exit();
