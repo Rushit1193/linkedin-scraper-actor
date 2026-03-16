@@ -1,0 +1,14 @@
+{
+    "name": "linkedin-scraper-actor",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "LinkedIn URL Collector Actor",
+    "main": "src/main.js",
+    "scripts": {
+        "start": "node src/main.js"
+    },
+    "dependencies": {
+        "apify": "^3.0.0",
+        "axios": "^1.6.0"
+    }
+}
