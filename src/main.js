@@ -63,14 +63,15 @@ const requestIds = [];
 for (const url of allLinkedinUrls) {
     console.log(`Sending URL to webhook: ${url}`);
     
-    const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, {
-        service_name: serviceName || 'LinkedIn Scraper',
-        service_request_tag_name: serviceRequestTagName || customerName,
-        service_request_url: url,
-        source: 'Dev name : Assignment'
-    }, {
-        headers: { 'Content-Type': 'application/json' }
-    });
+   const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, {
+    service_name: serviceName || 'LinkedIn Scraper',
+    service_request_tag_name: serviceRequestTagName || customerName,
+    service_request_url: url,
+    source: 'Dev name : Assignment'
+}, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 30000
+});
 
     console.log('Webhook response:', webhookResponse.data);
     
