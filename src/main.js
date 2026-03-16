@@ -25,6 +25,20 @@ const auth = new google.auth.GoogleAuth({
 const drive = google.drive({ version: 'v3', auth });
 const sheets = google.sheets({ version: 'v4', auth });
 
+// Share file with personal account as editor
+async function shareWithEditor(fileId) {
+    await drive.permissions.create({
+        fileId: fileId,
+        requestBody: {
+            role: 'writer',
+            type: 'user',
+            emailAddress: OWNER_EMAIL
+        },
+        sendNotificationEmail: false
+    });
+    console.log(`Shared with ${OWNER_EMAIL}`);
+}
+
 // Create folder
 async function createFolder(name, parentId) {
     console.log(`Creating folder: ${name}`);
@@ -37,19 +51,7 @@ async function createFolder(name, parentId) {
         fields: 'id'
     });
     console.log(`Folder created with ID: ${response.data.id}`);
-    
-    // Transfer ownership to personal account
-    await drive.permissions.create({
-        fileId: response.data.id,
-        transferOwnership: true,
-        requestBody: {
-            role: 'owner',
-            type: 'user',
-            emailAddress: OWNER_EMAIL
-        }
-    });
-    console.log(`Folder ownership transferred to ${OWNER_EMAIL}`);
-    
+    await shareWithEditor(response.data.id);
     return response.data.id;
 }
 
@@ -65,19 +67,7 @@ async function createGoogleSheet(name, parentId) {
         fields: 'id'
     });
     console.log(`Google Sheet created with ID: ${response.data.id}`);
-
-    // Transfer ownership to personal account
-    await drive.permissions.create({
-        fileId: response.data.id,
-        transferOwnership: true,
-        requestBody: {
-            role: 'owner',
-            type: 'user',
-            emailAddress: OWNER_EMAIL
-        }
-    });
-    console.log(`Sheet ownership transferred to ${OWNER_EMAIL}`);
-
+    await shareWithEditor(response.data.id);
     return response.data.id;
 }
 
