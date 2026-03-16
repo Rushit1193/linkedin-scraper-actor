@@ -1,0 +1,17 @@
+{
+    "title": "LinkedIn URL Collector",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "linkedinUrls": {
+            "title": "LinkedIn URLs",
+            "type": "array",
+            "description": "List of LinkedIn profile URLs to process",
+            "editor": "stringList",
+            "prefill": [
+                "https://www.linkedin.com/in/example-profile"
+            ]
+        }
+    },
+    "required": ["linkedinUrls"]
+}
