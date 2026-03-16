@@ -63,8 +63,7 @@ const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraper',
     service_request_tag_name: serviceRequestTagName || customerName,
     service_request_url: allLinkedinUrls[0],
-    source: 'Dev name : Assignment',
-    profileUrls: allLinkedinUrls
+    source: 'Dev name : Assignment'
 };
 
 console.log('Webhook payload:', JSON.stringify(webhookPayload));
