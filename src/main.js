@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 
 await Actor.init();
 
-const MAIN_FOLDER_ID = '1UJgpC725VPTDvoTThU8m_8GnPIAgVKN9';
+const MAIN_FOLDER_ID = '1YOZsHQGrJgXVl_cMFdSWzZE7XgvE8SIW';
 
 const input = await Actor.getInput();
 console.log('Input received:', input);
