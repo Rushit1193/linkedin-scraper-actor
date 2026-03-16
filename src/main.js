@@ -60,11 +60,13 @@ console.log(`✅ Google Sheet created: ${sheetUrl}`);
 console.log('Sending URLs to Webhook Input...');
 
 const webhookPayload = {
-    service_name: serviceName || 'LinkedIn Scraper',
-    service_request_tag_name: serviceRequestTagName || customerName,
+    service_name: serviceName || 'dev_fusion/linkedin-profile-scraper',
+    service_request_tag_name: serviceRequestTagName || 'linkedin-profile-scraper',
     service_request_url: allLinkedinUrls[0],
     source: 'Dev name : Assignment'
 };
+
+console.log('Sending webhook payload:', JSON.stringify(webhookPayload));
 
 console.log('Webhook payload:', JSON.stringify(webhookPayload));
 
