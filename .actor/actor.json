@@ -1,0 +1,8 @@
+{
+    "actorSpecification": 1,
+    "name": "linkedin-scraper-actor",
+    "title": "LinkedIn URL Collector",
+    "description": "Collects LinkedIn URLs and sends to webhook",
+    "version": "0.0.1",
+    "buildTag": "latest"
+}
