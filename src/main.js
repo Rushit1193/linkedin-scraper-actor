@@ -1,91 +1,14 @@
 import { Actor } from 'apify';
 import axios from 'axios';
-import { google } from 'googleapis';
 
 await Actor.init();
 
-const MAIN_FOLDER_ID = '1YOZsHQGrJgXVl_cMFdSWzZE7XgvE8SIW';
-const OWNER_EMAIL = 'rushitsangani11@gmail.com';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWJN1kcwtomVHzCtdXSsW3ScEYsea7C3bPRVyWJbCifCr77TNXDZLAVUhodib8rESOwA/exec';
 
 const input = await Actor.getInput();
 console.log('Input received:', input);
 
 const { inputMode, linkedinUrls = [], csvFileUrl, customerName } = input;
-
-// Setup Google Auth
-const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
-const auth = new google.auth.GoogleAuth({
-    credentials: serviceAccount,
-    scopes: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/spreadsheets'
-    ]
-});
-
-const drive = google.drive({ version: 'v3', auth });
-const sheets = google.sheets({ version: 'v4', auth });
-
-// Share file with personal account as editor
-async function shareWithEditor(fileId) {
-    await drive.permissions.create({
-        fileId: fileId,
-        requestBody: {
-            role: 'writer',
-            type: 'user',
-            emailAddress: OWNER_EMAIL
-        },
-        sendNotificationEmail: false
-    });
-    console.log(`Shared with ${OWNER_EMAIL}`);
-}
-
-// Create folder
-async function createFolder(name, parentId) {
-    console.log(`Creating folder: ${name}`);
-    const response = await drive.files.create({
-        requestBody: {
-            name: name,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: [parentId]
-        },
-        fields: 'id'
-    });
-    console.log(`Folder created with ID: ${response.data.id}`);
-    await shareWithEditor(response.data.id);
-    return response.data.id;
-}
-
-// Create Google Sheet
-async function createGoogleSheet(name, parentId) {
-    console.log(`Creating Google Sheet: ${name}`);
-    const response = await drive.files.create({
-        requestBody: {
-            name: name,
-            mimeType: 'application/vnd.google-apps.spreadsheet',
-            parents: [parentId]
-        },
-        fields: 'id'
-    });
-    console.log(`Google Sheet created with ID: ${response.data.id}`);
-    await shareWithEditor(response.data.id);
-    return response.data.id;
-}
-
-// Save URLs to sheet
-async function saveUrlsToSheet(sheetId, urls) {
-    console.log(`Saving ${urls.length} URLs to sheet...`);
-    const values = [
-        ['LinkedIn URL', 'Status', 'Date Added'],
-        ...urls.map(url => [url, 'Pending', new Date().toISOString()])
-    ];
-    await sheets.spreadsheets.values.update({
-        spreadsheetId: sheetId,
-        range: 'Sheet1!A1',
-        valueInputOption: 'RAW',
-        requestBody: { values }
-    });
-    console.log('URLs saved successfully!');
-}
 
 // Get LinkedIn URLs
 let allLinkedinUrls = [];
@@ -113,19 +36,27 @@ if (inputMode === 'manual') {
 }
 
 console.log('Total URLs:', allLinkedinUrls.length);
-console.log('Setting up Google Drive structure...');
+console.log('Sending data to Google Apps Script...');
 
-// Create customer folder
-const customerFolderId = await createFolder(customerName, MAIN_FOLDER_ID);
+// Send data to Google Apps Script
+const response = await axios.post(APPS_SCRIPT_URL, {
+    customerName,
+    linkedinUrls: allLinkedinUrls
+}, {
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    maxRedirects: 5
+});
 
-// Create sheet in customer folder
-const sheetId = await createGoogleSheet(`${customerName} - LinkedIn URLs`, customerFolderId);
+console.log('Apps Script response:', response.data);
 
-// Save URLs
-await saveUrlsToSheet(sheetId, allLinkedinUrls);
+if (!response.data.success) {
+    throw new Error(`Apps Script error: ${response.data.error}`);
+}
 
-const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}`;
-console.log(`✅ Sheet URL: ${sheetUrl}`);
+const sheetUrl = response.data.sheetUrl;
+console.log(`✅ Google Sheet created: ${sheetUrl}`);
 
 await Actor.setValue('OUTPUT', {
     customerName,
@@ -133,7 +64,7 @@ await Actor.setValue('OUTPUT', {
     totalUrls: allLinkedinUrls.length,
     linkedinUrls: allLinkedinUrls,
     googleSheetUrl: sheetUrl,
-    customerFolderId
+    customerFolderId: response.data.customerFolderId
 });
 
 console.log('✅ All done!');
