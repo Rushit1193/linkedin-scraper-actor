@@ -38,37 +38,56 @@ async function createFolder(name, parentId) {
 
     const response = await drive.files.create({
         resource: fileMetadata,
-        fields: 'id, name'
+        fields: 'id, name',
+        supportsAllDrives: true
     });
 
     console.log(`Folder created: ${name} with ID: ${response.data.id}`);
     return response.data.id;
 }
 
-// Function to create a Google Sheet
+// Function to create Google Sheet using Sheets API
 async function createGoogleSheet(name, parentId) {
     console.log(`Creating Google Sheet: ${name}`);
-    
-    const fileMetadata = {
-        name: name,
-        mimeType: 'application/vnd.google-apps.spreadsheet',
-        parents: [parentId]
-    };
 
-    const response = await drive.files.create({
-        resource: fileMetadata,
-        fields: 'id, name'
+    // Step 1: Create spreadsheet using Sheets API
+    const spreadsheet = await sheets.spreadsheets.create({
+        resource: {
+            properties: {
+                title: name
+            }
+        },
+        fields: 'spreadsheetId'
     });
 
-    console.log(`Google Sheet created: ${name} with ID: ${response.data.id}`);
-    return response.data.id;
+    const sheetId = spreadsheet.data.spreadsheetId;
+    console.log(`Spreadsheet created with ID: ${sheetId}`);
+
+    // Step 2: Move the spreadsheet to the correct folder
+    const file = await drive.files.get({
+        fileId: sheetId,
+        fields: 'parents',
+        supportsAllDrives: true
+    });
+
+    const previousParents = file.data.parents.join(',');
+
+    await drive.files.update({
+        fileId: sheetId,
+        addParents: parentId,
+        removeParents: previousParents,
+        supportsAllDrives: true,
+        fields: 'id, parents'
+    });
+
+    console.log(`Google Sheet moved to correct folder`);
+    return sheetId;
 }
 
 // Function to save LinkedIn URLs to Google Sheet
 async function saveUrlsToSheet(sheetId, urls) {
     console.log(`Saving ${urls.length} URLs to Google Sheet...`);
     
-    // Add header row
     const values = [
         ['LinkedIn URL', 'Status', 'Date Added'],
         ...urls.map(url => [url, 'Pending', new Date().toISOString()])
