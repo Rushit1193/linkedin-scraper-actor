@@ -4,6 +4,9 @@ import { google } from 'googleapis';
 
 await Actor.init();
 
+// Your main Google Drive folder ID
+const MAIN_FOLDER_ID = '1UJgpC725VPTDvoTThU8m_8GnPIAgVKN9';
+
 // Get input from the actor
 const input = await Actor.getInput();
 console.log('Input received:', input);
@@ -23,14 +26,14 @@ const auth = new google.auth.GoogleAuth({
 const drive = google.drive({ version: 'v3', auth });
 const sheets = google.sheets({ version: 'v4', auth });
 
-// Function to create or find a folder in Google Drive
-async function createFolder(name, parentId = null) {
+// Function to create a folder in Google Drive
+async function createFolder(name, parentId) {
     console.log(`Creating folder: ${name}`);
     
     const fileMetadata = {
         name: name,
         mimeType: 'application/vnd.google-apps.folder',
-        ...(parentId && { parents: [parentId] })
+        parents: [parentId]
     };
 
     const response = await drive.files.create({
@@ -118,11 +121,8 @@ console.log('Total LinkedIn URLs:', allLinkedinUrls.length);
 // Create Google Drive folder structure
 console.log('Setting up Google Drive folder structure...');
 
-// Create main folder
-const mainFolderId = await createFolder('LinkedIn Scraper Data');
-
 // Create customer folder inside main folder
-const customerFolderId = await createFolder(customerName, mainFolderId);
+const customerFolderId = await createFolder(customerName, MAIN_FOLDER_ID);
 
 // Create Google Sheet inside customer folder
 const sheetId = await createGoogleSheet(`${customerName} - LinkedIn URLs`, customerFolderId);
@@ -140,7 +140,6 @@ await Actor.setValue('OUTPUT', {
     totalUrls: allLinkedinUrls.length,
     linkedinUrls: allLinkedinUrls,
     googleSheetUrl: sheetUrl,
-    mainFolderId,
     customerFolderId
 });
 
