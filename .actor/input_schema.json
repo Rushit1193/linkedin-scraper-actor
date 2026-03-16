@@ -3,15 +3,36 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "inputMode": {
+            "title": "Input Mode",
+            "type": "string",
+            "description": "Choose how you want to provide LinkedIn URLs",
+            "editor": "select",
+            "enum": ["manual", "bulk"],
+            "enumTitles": ["Manual Input", "Bulk CSV Upload"],
+            "default": "manual"
+        },
         "linkedinUrls": {
-            "title": "LinkedIn URLs",
+            "title": "LinkedIn URLs (Manual)",
             "type": "array",
-            "description": "List of LinkedIn profile URLs to process",
+            "description": "Add LinkedIn profile URLs one by one",
             "editor": "stringList",
             "prefill": [
                 "https://www.linkedin.com/in/example-profile"
             ]
+        },
+        "csvFileUrl": {
+            "title": "CSV File URL (Bulk Upload)",
+            "type": "string",
+            "description": "Upload a CSV file containing LinkedIn URLs (one URL per row)",
+            "editor": "textfield"
+        },
+        "customerName": {
+            "title": "Customer Name",
+            "type": "string",
+            "description": "Enter customer name (used to organize files in Google Drive)",
+            "editor": "textfield"
         }
     },
-    "required": ["linkedinUrls"]
+    "required": ["inputMode", "customerName"]
 }
