@@ -3,10 +3,29 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "customerName": {
+            "title": "Customer Name",
+            "type": "string",
+            "description": "Enter customer name",
+            "editor": "textfield"
+        },
+        "serviceName": {
+            "title": "Service Name",
+            "type": "string",
+            "description": "Enter service name",
+            "editor": "textfield",
+            "default": "LinkedIn Scraper"
+        },
+        "serviceRequestTagName": {
+            "title": "Service Request Tag Name",
+            "type": "string",
+            "description": "Enter service request tag name",
+            "editor": "textfield"
+        },
         "inputMode": {
             "title": "Input Mode",
             "type": "string",
-            "description": "Choose how you want to provide LinkedIn URLs",
+            "description": "Choose how to provide LinkedIn URLs",
             "editor": "select",
             "enum": ["manual", "bulk"],
             "enumTitles": ["Manual Input", "Bulk CSV Upload"],
@@ -24,15 +43,9 @@
         "csvFileUrl": {
             "title": "CSV File URL (Bulk Upload)",
             "type": "string",
-            "description": "Upload a CSV file containing LinkedIn URLs (one URL per row)",
-            "editor": "textfield"
-        },
-        "customerName": {
-            "title": "Customer Name",
-            "type": "string",
-            "description": "Enter customer name (used to organize files in Google Drive)",
+            "description": "URL of CSV file containing LinkedIn URLs",
             "editor": "textfield"
         }
     },
-    "required": ["inputMode", "customerName"]
+    "required": ["customerName", "inputMode"]
 }
