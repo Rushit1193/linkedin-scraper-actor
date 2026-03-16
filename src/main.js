@@ -56,76 +56,61 @@ if (!driveResponse.data.success) {
 const sheetUrl = driveResponse.data.sheetUrl;
 console.log(`✅ Google Sheet created: ${sheetUrl}`);
 
-// Step 2: Send each URL to Webhook Input
+// Step 2: Send all URLs to Webhook Input at once
 console.log('Sending URLs to Webhook Input...');
-const requestIds = [];
 
-for (const url of allLinkedinUrls) {
-    console.log(`Sending URL to webhook: ${url}`);
-    
-   const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, {
+const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraper',
     service_request_tag_name: serviceRequestTagName || customerName,
-    service_request_url: url,
-    source: 'Dev name : Assignment'
-}, {
+    service_request_url: allLinkedinUrls[0],
+    source: 'Dev name : Assignment',
+    profileUrls: allLinkedinUrls
+};
+
+console.log('Webhook payload:', JSON.stringify(webhookPayload));
+
+const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, webhookPayload, {
     headers: { 'Content-Type': 'application/json' },
     timeout: 30000
 });
 
-    console.log('Webhook response:', webhookResponse.data);
-    
-    if (webhookResponse.data.request_id) {
-        requestIds.push({
-            url: url,
-            requestId: webhookResponse.data.request_id
-        });
-        console.log(`✅ Request ID received: ${webhookResponse.data.request_id}`);
-    }
-}
+console.log('Webhook response:', webhookResponse.data);
 
-console.log('All request IDs:', requestIds);
+const requestId = webhookResponse.data.request_id || 
+                  webhookResponse.data.requestId || 
+                  webhookResponse.data.id;
+
+console.log(`✅ Request ID received: ${requestId}`);
 
 // Step 3: Poll Status Webhook every 3 minutes
 console.log('Polling status webhook...');
-const completedResults = [];
 
-for (const item of requestIds) {
-    console.log(`Checking status for request ID: ${item.requestId}`);
-    
-    let status = 'processing';
-    let attempts = 0;
-    let resultData = null;
+let status = 'processing';
+let attempts = 0;
+let resultData = null;
 
-    while (status !== 'completed' && attempts < 10) {
-        attempts++;
-        console.log(`Attempt ${attempts} for request ID: ${item.requestId}`);
+while (status !== 'completed' && attempts < 10) {
+    attempts++;
+    console.log(`Attempt ${attempts} - Checking status for request ID: ${requestId}`);
 
-        const statusResponse = await axios.post(WEBHOOK_STATUS_URL, {
-            request_id: item.requestId
-        }, {
-            headers: { 'Content-Type': 'application/json' }
-        });
+    const statusResponse = await axios.post(WEBHOOK_STATUS_URL, {
+        request_id: requestId
+    }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+    });
 
-        console.log('Status response:', statusResponse.data);
-        status = statusResponse.data.status;
+    console.log('Status response:', statusResponse.data);
+    status = statusResponse.data.status;
 
-        if (status === 'completed') {
-            console.log(`✅ Request ${item.requestId} completed!`);
-            resultData = statusResponse.data;
-            break;
-        }
-
-        console.log(`Status is ${status}, waiting 3 minutes...`);
-        await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000));
+    if (status === 'completed') {
+        console.log(`✅ Request completed!`);
+        resultData = statusResponse.data;
+        break;
     }
 
-    completedResults.push({
-        url: item.url,
-        requestId: item.requestId,
-        status: status,
-        result: resultData
-    });
+    console.log(`Status is "${status}", waiting 3 minutes...`);
+    await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000));
 }
 
 // Save final output
@@ -135,8 +120,9 @@ await Actor.setValue('OUTPUT', {
     totalUrls: allLinkedinUrls.length,
     linkedinUrls: allLinkedinUrls,
     googleSheetUrl: sheetUrl,
-    requestIds,
-    completedResults
+    requestId,
+    status,
+    result: resultData
 });
 
 console.log('✅ All done!');
