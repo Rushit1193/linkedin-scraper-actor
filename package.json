@@ -9,6 +9,7 @@
     },
     "dependencies": {
         "apify": "^3.0.0",
-        "axios": "^1.6.0"
+        "axios": "^1.6.0",
+        "googleapis": "^140.0.0"
     }
 }
