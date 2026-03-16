@@ -5,6 +5,7 @@ import { google } from 'googleapis';
 await Actor.init();
 
 const MAIN_FOLDER_ID = '1YOZsHQGrJgXVl_cMFdSWzZE7XgvE8SIW';
+const OWNER_EMAIL = 'rushitsangani11@gmail.com';
 
 const input = await Actor.getInput();
 console.log('Input received:', input);
@@ -33,14 +34,26 @@ async function createFolder(name, parentId) {
             mimeType: 'application/vnd.google-apps.folder',
             parents: [parentId]
         },
-        fields: 'id',
-        supportsAllDrives: true
+        fields: 'id'
     });
     console.log(`Folder created with ID: ${response.data.id}`);
+    
+    // Transfer ownership to personal account
+    await drive.permissions.create({
+        fileId: response.data.id,
+        transferOwnership: true,
+        requestBody: {
+            role: 'owner',
+            type: 'user',
+            emailAddress: OWNER_EMAIL
+        }
+    });
+    console.log(`Folder ownership transferred to ${OWNER_EMAIL}`);
+    
     return response.data.id;
 }
 
-// Create Google Sheet directly in folder via Drive API
+// Create Google Sheet
 async function createGoogleSheet(name, parentId) {
     console.log(`Creating Google Sheet: ${name}`);
     const response = await drive.files.create({
@@ -49,10 +62,22 @@ async function createGoogleSheet(name, parentId) {
             mimeType: 'application/vnd.google-apps.spreadsheet',
             parents: [parentId]
         },
-        fields: 'id',
-        supportsAllDrives: true
+        fields: 'id'
     });
     console.log(`Google Sheet created with ID: ${response.data.id}`);
+
+    // Transfer ownership to personal account
+    await drive.permissions.create({
+        fileId: response.data.id,
+        transferOwnership: true,
+        requestBody: {
+            role: 'owner',
+            type: 'user',
+            emailAddress: OWNER_EMAIL
+        }
+    });
+    console.log(`Sheet ownership transferred to ${OWNER_EMAIL}`);
+
     return response.data.id;
 }
 
