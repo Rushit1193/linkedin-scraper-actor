@@ -71,7 +71,7 @@ console.log('Sending to Webhook Input...');
 const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraping',
     service_request_tag_name: serviceRequestTagName || 'linkedin-scraping',
-    service_request_url: kvStoreUrl,
+    service_request_url: allLinkedinUrls[0],
     source: 'test',
     dev_name: 'Assignment'
 };
