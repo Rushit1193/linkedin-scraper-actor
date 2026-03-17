@@ -71,10 +71,11 @@ console.log('Sending to Webhook Input...');
 const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraping',
     service_request_tag_name: serviceRequestTagName || 'linkedin-scraping',
-    service_request_url: allLinkedinUrls[0],
+    service_request_url: sheetUrl,
     source: 'test',
     dev_name: 'Assignment'
 };
+console.log('Sheet URL being sent:', sheetUrl);
 
 console.log('Webhook payload:', JSON.stringify(webhookPayload));
 
