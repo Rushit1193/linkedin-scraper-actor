@@ -72,7 +72,7 @@ const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraping',
     service_request_tag_name: serviceRequestTagName || 'linkedin-scraping',
     service_request_url: kvStoreUrl,
-    source: 'apify',
+    source: 'test',
     dev_name: 'Assignment'
 };
 
