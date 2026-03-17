@@ -32,8 +32,10 @@ if (inputMode === 'manual') {
             }
         }
         console.log(`Found ${allLinkedinUrls.length} URLs from CSV`);
-    } catch (error) {
-        throw new Error(`Failed to download CSV: ${error.message}`);
+   } catch (error) {
+    console.log(`⚠️ Webhook error: ${error.message}`);
+    console.log(`Error status: ${error.response?.status}`);
+    console.log(`Error data: ${JSON.stringify(error.response?.data)}`);
     }
 }
 
