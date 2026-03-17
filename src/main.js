@@ -4,7 +4,7 @@ import axios from 'axios';
 await Actor.init();
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWJN1kcwtomVHzCtdXSsW3ScEYsea7C3bPRVyWJbCifCr77TNXDZLAVUhodib8rESOwA/exec';
-const WEBHOOK_INPUT_URL = 'https://s1.boomerangserver.co.in/webhook/all-services-caller';
+const WEBHOOK_INPUT_URL = 'https://tgrfd.app.n8n.cloud/webhook/linkedin-scraper';
 const WEBHOOK_STATUS_URL = 'https://s1.boomerangserver.co.in/webhook/private-profile-export-request-stats';
 
 const input = await Actor.getInput();
