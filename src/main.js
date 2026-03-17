@@ -62,7 +62,7 @@ console.log('Sending to Webhook Input...');
 const webhookPayload = {
     service_name: serviceName || 'LinkedIn Scraping',
     service_request_tag_name: serviceRequestTagName || 'linkedin-scraping',
-    service_request_url: sheetUrl,
+    service_request_url: kvStoreUrl,
     source: 'apify',
     dev_name: 'Assignment'
 };
