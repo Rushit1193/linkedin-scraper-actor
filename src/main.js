@@ -39,7 +39,18 @@ if (inputMode === 'manual') {
 
 console.log('Total URLs:', allLinkedinUrls.length);
 
-// Step 1: Save to Google Drive
+// Step 1: Save URLs to Apify Key-Value Store
+console.log('Saving URLs to Apify Key-Value Store...');
+const kvStoreKey = `${customerName.replace(/\s+/g, '-')}-linkedin-urls`;
+await Actor.setValue(kvStoreKey, allLinkedinUrls);
+
+// Get the Key-Value Store URL
+const defaultKvStore = await Actor.openKeyValueStore();
+const kvStoreId = defaultKvStore.id || process.env.APIFY_DEFAULT_KEY_VALUE_STORE_ID;
+const kvStoreUrl = `https://api.apify.com/v2/key-value-stores/${kvStoreId}/records/${kvStoreKey}`;
+console.log(`✅ Key-Value Store URL: ${kvStoreUrl}`);
+
+// Step 2: Save to Google Drive
 console.log('Saving to Google Drive...');
 const driveResponse = await axios.post(APPS_SCRIPT_URL, {
     customerName,
@@ -56,14 +67,15 @@ if (!driveResponse.data.success) {
 const sheetUrl = driveResponse.data.sheetUrl;
 console.log(`✅ Google Sheet created: ${sheetUrl}`);
 
-// Step 2: Send to Webhook Input
-console.log('Sending URLs to Webhook Input...');
+// Step 3: Send to Webhook Input
+console.log('Sending to Webhook Input...');
 
 const webhookPayload = {
-    service_name: serviceName || 'LinkedIn Scraper',
-    service_request_tag_name: serviceRequestTagName || customerName,
-    service_request_url: allLinkedinUrls[0],
-    source: 'Dev name : Assignment'
+    service_name: serviceName || 'LinkedIn Scraping',
+    service_request_tag_name: serviceRequestTagName || 'linkedin-scraping',
+    service_request_url: kvStoreUrl,
+    source: 'apify',
+    dev_name: 'Assignment'
 };
 
 console.log('Webhook payload:', JSON.stringify(webhookPayload));
@@ -73,35 +85,33 @@ let requestId = null;
 try {
     const webhookResponse = await axios.post(WEBHOOK_INPUT_URL, webhookPayload, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 60000 // 60 seconds
+        timeout: 60000
     });
 
-    console.log('Webhook response:', webhookResponse.data);
+    console.log('Full webhook response:', JSON.stringify(webhookResponse.data));
+
     requestId = webhookResponse.data.request_id ||
                 webhookResponse.data.requestId ||
                 webhookResponse.data.id;
 
-    console.log(`✅ Request ID received: ${requestId}`);
+    console.log(`✅ Request ID: ${requestId}`);
 
 } catch (error) {
     console.log(`⚠️ Webhook error: ${error.message}`);
-    console.log('Saving partial output...');
-
     await Actor.setValue('OUTPUT', {
         customerName,
         inputMode,
         totalUrls: allLinkedinUrls.length,
         linkedinUrls: allLinkedinUrls,
         googleSheetUrl: sheetUrl,
+        kvStoreUrl,
         webhookError: error.message,
         status: 'webhook_failed'
     });
-
     await Actor.exit();
-    process.exit(0);
 }
 
-// Step 3: Poll Status Webhook
+// Step 4: Poll Status Webhook
 if (requestId) {
     console.log('Polling status webhook...');
 
@@ -121,14 +131,17 @@ if (requestId) {
                 timeout: 60000
             });
 
-            console.log('Status response:', statusResponse.data);
-            status = statusResponse.data.status;
+            console.log('Status response:', JSON.stringify(statusResponse.data));
+            status = statusResponse.data.status ||
+                     statusResponse.data.Status ||
+                     'processing';
 
-            if (status === 'completed') {
+            if (status === 'completed' || status === 'Completed') {
                 console.log(`✅ Completed!`);
                 resultData = statusResponse.data;
                 break;
             }
+
         } catch (error) {
             console.log(`Status check error: ${error.message}`);
         }
@@ -143,6 +156,7 @@ if (requestId) {
         totalUrls: allLinkedinUrls.length,
         linkedinUrls: allLinkedinUrls,
         googleSheetUrl: sheetUrl,
+        kvStoreUrl,
         requestId,
         status,
         result: resultData
